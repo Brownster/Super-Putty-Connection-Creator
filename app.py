@@ -62,19 +62,24 @@ def generate_putty_sessions_xml(df, group_name):
     root.set('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance')
 
     for index, row in df.iterrows():
-        session_id = f"{group_name}/{row['Country']}/{row['Location']}/{row['Hostnames']}"
-        host = f"{row['ssh_username']}@{row['IP Address']}"
+        try:
+            session_id = f"{group_name}/{str(row['Country'])}/{str(row['Location'])}/{str(row['Hostnames'])}"
+            host = f"{str(row['ssh_username'])}@{str(row['IP Address'])}"
 
-        session_data = ET.SubElement(root, 'SessionData')
-        session_data.set('SessionId', session_id)
-        session_data.set('SessionName', row['Hostnames'])
-        session_data.set('ImageKey', 'computer')
-        session_data.set('Host', host)
-        session_data.set('Port', str(row.get('OS-Listen-Port', '22')))
-        session_data.set('Proto', 'SSH')
-        session_data.set('PuttySession', 'Default Settings')
-        session_data.set('Username', row['ssh_username'])
-        # Add any other necessary attributes or handle them being optional
+            session_data = ET.SubElement(root, 'SessionData')
+            session_data.set('SessionId', session_id)
+            session_data.set('SessionName', str(row['Hostnames']))
+            session_data.set('ImageKey', 'computer')
+            session_data.set('Host', host)
+            session_data.set('Port', str(row.get('OS-Listen-Port', '22')))
+            session_data.set('Proto', 'SSH')
+            session_data.set('PuttySession', 'Default Settings')
+            session_data.set('Username', str(row['ssh_username']))
+            # Add any other necessary attributes or handle them being optional
+        except KeyError as e:
+            print(f"Missing key in DataFrame row: {e}")
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
     return prettify_xml(root)
 
