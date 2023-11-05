@@ -56,20 +56,29 @@ def prettify_xml(element):
     reparsed = minidom.parseString(rough_string)
     return reparsed.toprettyxml(indent="  ")
 
-def generate_putty_sessions_xml(df, group_name):
+def generate_putty_sessions_xml(df, group_name, match_value):
     root = ET.Element('ArrayOfSessionData')
     root.set('xmlns:xsd', 'http://www.w3.org/2001/XMLSchema')
     root.set('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance')
 
+    # Define the folder mapping based on the match_value
+    folder_mapping = {
+        'exporter_linux': 'Linux Server',
+        'exporter_gateway': 'Media Gateway'
+    }
+    
+    # Determine the subfolder name based on the match_value
+    subfolder = folder_mapping.get(match_value, 'Other')
+
     for index, row in df.iterrows():
-        session_id = f"{group_name}/{row['Country']}/{row['Location']}/{row['Hostnames']}"
-        
         # Check if 'ssh_username' is not NaN and is a string with length
         if pd.notna(row['ssh_username']) and str(row['ssh_username']).strip():
             host = f"{row['ssh_username']}@{row['IP Address']}"
         else:
-            # If 'ssh_username' is NaN or empty, only use the IP address
             host = row['IP Address']
+
+        # Construct session_id with the additional subfolder level
+        session_id = f"{group_name}/{subfolder}/{row['Country']}/{row['Location']}/{row['Hostnames']}"
 
         session_data = ET.SubElement(root, 'SessionData')
         session_data.set('SessionId', session_id)
@@ -79,10 +88,8 @@ def generate_putty_sessions_xml(df, group_name):
         session_data.set('Port', '22')
         session_data.set('Proto', 'SSH')
         session_data.set('PuttySession', 'Default Settings')
-        # Only set the Username if it's not NaN
         if pd.notna(row['ssh_username']) and str(row['ssh_username']).strip():
             session_data.set('Username', str(row['ssh_username']))
-        # Other attributes omitted for brevity
 
     return prettify_xml(root)
 
