@@ -71,7 +71,7 @@ def generate_putty_sessions_xml(df, group_name):
             session_data.set('SessionName', str(row['Hostnames']))
             session_data.set('ImageKey', 'computer')
             session_data.set('Host', host)
-            session_data.set('Port', str(row.get('OS-Listen-Port', '22')))
+            session_data.set('Port', '22')
             session_data.set('Proto', 'SSH')
             session_data.set('PuttySession', 'Default Settings')
             session_data.set('Username', str(row['ssh_username']))
