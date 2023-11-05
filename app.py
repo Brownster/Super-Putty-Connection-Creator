@@ -62,26 +62,30 @@ def generate_putty_sessions_xml(df, group_name):
     root.set('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance')
 
     for index, row in df.iterrows():
-        try:
-            session_id = f"{group_name}/{str(row['Country'])}/{str(row['Location'])}/{str(row['Hostnames'])}"
-            host = f"{str(row['ssh_username'])}@{str(row['IP Address'])}"
+        session_id = f"{group_name}/{row['Country']}/{row['Location']}/{row['Hostnames']}"
+        
+        # Check if 'ssh_username' is not NaN and is a string with length
+        if pd.notna(row['ssh_username']) and str(row['ssh_username']).strip():
+            host = f"{row['ssh_username']}@{row['IP Address']}"
+        else:
+            # If 'ssh_username' is NaN or empty, only use the IP address
+            host = row['IP Address']
 
-            session_data = ET.SubElement(root, 'SessionData')
-            session_data.set('SessionId', session_id)
-            session_data.set('SessionName', str(row['Hostnames']))
-            session_data.set('ImageKey', 'computer')
-            session_data.set('Host', host)
-            session_data.set('Port', '22')
-            session_data.set('Proto', 'SSH')
-            session_data.set('PuttySession', 'Default Settings')
+        session_data = ET.SubElement(root, 'SessionData')
+        session_data.set('SessionId', session_id)
+        session_data.set('SessionName', row['Hostnames'])
+        session_data.set('ImageKey', 'computer')
+        session_data.set('Host', host)
+        session_data.set('Port', '22')
+        session_data.set('Proto', 'SSH')
+        session_data.set('PuttySession', 'Default Settings')
+        # Only set the Username if it's not NaN
+        if pd.notna(row['ssh_username']) and str(row['ssh_username']).strip():
             session_data.set('Username', str(row['ssh_username']))
-            # Add any other necessary attributes or handle them being optional
-        except KeyError as e:
-            print(f"Missing key in DataFrame row: {e}")
-        except Exception as e:
-            print(f"An error occurred: {e}")
+        # Other attributes omitted for brevity
 
     return prettify_xml(root)
+
 
 @app.route('/downloads/<filename>', methods=['GET'])
 def download_file(filename):
