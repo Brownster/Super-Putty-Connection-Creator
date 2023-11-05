@@ -38,7 +38,7 @@ def upload_file():
             return f"The column '{column_name}' does not exist in the Excel file.", 400
 
         matched_df = df[df[column_name].astype(str).str.strip() == match_value.strip()]
-        putty_xml_content = generate_putty_sessions_xml(matched_df, group_name)
+        putty_xml_content = generate_putty_sessions_xml(matched_df, group_name, match_value)
 
         processed_filename = f"processed_{file.filename.rsplit('.', 1)[0]}.xml"
         processed_filepath = os.path.join(app.config['UPLOAD_FOLDER'], processed_filename)
