@@ -64,32 +64,38 @@ def generate_putty_sessions_xml(df, group_name, match_value):
     # Define the folder mapping based on the match_value
     folder_mapping = {
         'exporter_linux': 'Linux Server',
-        'exporter_gateway': 'Media Gateway'
+        'exporter_gateway': 'Media Gateway',
+        'exporter_windows': 'Windows Server',
+        'exporter_verint': 'Verint Server',
+        
     }
     
     # Determine the subfolder name based on the match_value
     subfolder = folder_mapping.get(match_value, 'Other')
 
     for index, row in df.iterrows():
-        # Check if 'ssh_username' is not NaN and is a string with length
-        if pd.notna(row['ssh_username']) and str(row['ssh_username']).strip():
-            host = f"{row['ssh_username']}@{row['IP Address']}"
-        else:
-            host = row['IP Address']
-
-        # Construct session_id with the additional subfolder level
-        session_id = f"{group_name}/{subfolder}/{row['Country']}/{row['Location']}/{row['Hostnames']}"
-
         session_data = ET.SubElement(root, 'SessionData')
+
+        # Set common session data
+        session_id = f"{group_name}/{subfolder}/{row['Country']}/{row['Location']}/{row['Hostnames']}"
         session_data.set('SessionId', session_id)
         session_data.set('SessionName', row['Hostnames'])
         session_data.set('ImageKey', 'computer')
-        session_data.set('Host', host)
-        session_data.set('Port', '22')
-        session_data.set('Proto', 'SSH')
-        session_data.set('PuttySession', 'Default Settings')
-        if pd.notna(row['ssh_username']) and str(row['ssh_username']).strip():
-            session_data.set('Username', str(row['ssh_username']))
+        session_data.set('Host', row['IP Address'])
+
+        # Set protocol-specific session data
+        if match_value in ['exporter_windows', 'exporter_verint']:
+            # Default RDP port is 3389
+            session_data.set('Port', '3389')
+            session_data.set('Proto', 'RDP')
+            # Username is not available for Windows servers
+        else:
+            # Default SSH port is 22
+            session_data.set('Port', '22')
+            session_data.set('Proto', 'SSH')
+            session_data.set('PuttySession', 'Default Settings')
+            if pd.notna(row['ssh_username']) and str(row['ssh_username']).strip():
+                session_data.set('Username', str(row['ssh_username']))
 
     return prettify_xml(root)
 
