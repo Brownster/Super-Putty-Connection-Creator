@@ -80,22 +80,32 @@ def generate_putty_sessions_xml(df, group_name, match_value):
         session_id = f"{group_name}/{subfolder}/{row['Country']}/{row['Location']}/{row['Hostnames']}"
         session_data.set('SessionId', session_id)
         session_data.set('SessionName', row['Hostnames'])
-        session_data.set('ImageKey', 'computer')
         session_data.set('Host', row['IP Address'])
 
         # Set protocol-specific session data
-        if match_value in ['exporter_windows', 'exporter_verint']:
+        if match_value == 'exporter_windows':
             # Default RDP port is 3389
+            session_data.set('ImageKey', 'windows')
             session_data.set('Port', '3389')
             session_data.set('Proto', 'RDP')
-            # Username is not available for Windows servers
+        elif match_value == 'exporter_verint':
+            # Default RDP port is 3389
+            session_data.set('ImageKey', 'verint')
+            session_data.set('Port', '3389')
+            session_data.set('Proto', 'RDP')
         else:
             # Default SSH port is 22
+            session_data.set('ImageKey', 'tux')
             session_data.set('Port', '22')
             session_data.set('Proto', 'SSH')
             session_data.set('PuttySession', 'Default Settings')
             if pd.notna(row['ssh_username']) and str(row['ssh_username']).strip():
                 session_data.set('Username', str(row['ssh_username']))
+                
+        secret_server_url = row.get('Secret Server', None)
+        if secret_server_url:
+            # Assuming you want to store it in a new XML element called SPSLFileName
+            ET.SubElement(session_data, 'SPSLFileName').text = secret_server_url                
 
     return prettify_xml(root)
 
