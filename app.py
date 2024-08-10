@@ -30,8 +30,6 @@ def upload_file():
 
         file = request.files['file']
         group_name = request.form.get('group_name', '').strip()
-        column_name = request.form.get('column_name', '').strip()
-        match_value = request.form.get('match_value', '').strip()
 
         if file.filename == '' or not allowed_file(file.filename):
             flash('Invalid file type or no file selected. Please upload an Excel or CSV file.')
@@ -54,16 +52,7 @@ def upload_file():
             flash('Unsupported file format.')
             return redirect(request.url)
 
-        if column_name not in df.columns:
-            flash(f"The column '{column_name}' does not exist in the file.")
-            return redirect(request.url)
-
-        matched_df = df[df[column_name].astype(str).str.strip() == match_value.strip()]
-        if matched_df.empty:
-            flash('No matching entries found.')
-            return redirect(request.url)
-
-        putty_xml_content = generate_putty_sessions_xml(matched_df, group_name, match_value)
+        putty_xml_content = generate_putty_sessions_xml(df, group_name)
 
         processed_filename = f"processed_{file.filename.rsplit('.', 1)[0]}.xml"
         processed_filepath = os.path.join(app.config['UPLOAD_FOLDER'], processed_filename)
@@ -99,7 +88,7 @@ def prettify_xml(element):
     return reparsed.toprettyxml(indent="  ")
 
 
-def generate_putty_sessions_xml(df, group_name, match_value):
+def generate_putty_sessions_xml(df, group_name):
     """Generate the XML content for Putty sessions."""
     root = ET.Element('ArrayOfSessionData')
     root.set('xmlns:xsd', 'http://www.w3.org/2001/XMLSchema')
@@ -112,9 +101,10 @@ def generate_putty_sessions_xml(df, group_name, match_value):
         'exporter_verint': 'Verint Server',
     }
 
-    subfolder = folder_mapping.get(match_value, 'Other')
-
     for _, row in df.iterrows():
+        exporter_type = row.get('Exporter_name_os', row.get('Exporter_name_app', 'other')).lower()
+        subfolder = folder_mapping.get(exporter_type, 'Other')
+
         session_data = ET.SubElement(root, 'SessionData')
         session_id = (
             f"{group_name}/{subfolder}/"
@@ -124,8 +114,8 @@ def generate_putty_sessions_xml(df, group_name, match_value):
         session_data.set('SessionName', row['Hostnames'])
         session_data.set('Host', row['IP Address'])
 
-        if match_value in ['exporter_windows', 'exporter_verint']:
-            session_data.set('ImageKey', match_value.split('_')[1])
+        if exporter_type in ['exporter_windows', 'exporter_verint']:
+            session_data.set('ImageKey', exporter_type.split('_')[1])
             session_data.set('Port', '3389')
             session_data.set('Proto', 'RDP')
         else:
@@ -133,9 +123,7 @@ def generate_putty_sessions_xml(df, group_name, match_value):
             session_data.set('Port', '22')
             session_data.set('Proto', 'SSH')
             session_data.set('PuttySession', 'Default Settings')
-            if pd.notna(row.get('ssh_username', None)) and str(
-                row['ssh_username']
-            ).strip():
+            if pd.notna(row.get('ssh_username')) and str(row['ssh_username']).strip():
                 session_data.set('Username', str(row['ssh_username']))
 
         secret_server_url = row.get('Secret Server', None)
