@@ -131,21 +131,9 @@
         <form action="/upload" method="post" enctype="multipart/form-data">
             <!-- Company Name Input with Tooltip -->
             <label for="group_name" class="tooltip">Company Name:
-                <span class="tooltiptext">Enter the name of the company to create the connection.</span>
+                <span class="tooltiptext">Enter the name of the company to create the connection group.</span>
             </label>
             <input type="text" id="group_name" name="group_name" required title="Enter company name">
-
-            <!-- Column Name Input with Tooltip -->
-            <label for="column_name" class="tooltip">Column Name:
-                <span class="tooltiptext">Specify the column name used for matching values in the file.</span>
-            </label>
-            <input type="text" id="column_name" name="column_name" required title="Enter column name">
-
-            <!-- Exporter Input with Tooltip -->
-            <label for="match_value" class="tooltip">Exporter:
-                <span class="tooltiptext">Provide the exporter type for connection classification (e.g., exporter_linux).</span>
-            </label>
-            <input type="text" id="match_value" name="match_value" required title="Enter exporter type">
 
             <!-- File Input for Excel or CSV with Tooltip -->
             <label for="file" class="tooltip">File (Excel or CSV):
