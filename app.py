@@ -152,11 +152,11 @@ def generate_putty_sessions_xml(df, group_name):
         session_data = ET.SubElement(root, 'SessionData')
         session_id = (
             f"{group_name}/{subfolder}/"
-            f"{row['Country']}/{row['Location']}/{row['Hostnames']}"
+            f"{str(row['Country'])}/{str(row['Location'])}/{str(row['Hostnames'])}"
         )
         session_data.set('SessionId', session_id)
-        session_data.set('SessionName', row['Hostnames'])
-        session_data.set('Host', row['IP Address'])
+        session_data.set('SessionName', str(row['Hostnames']))
+        session_data.set('Host', str(row['IP Address']))
 
         if exporter_type in ['exporter_windows', 'exporter_verint']:
             session_data.set('ImageKey', exporter_type.split('_')[1])
@@ -171,8 +171,8 @@ def generate_putty_sessions_xml(df, group_name):
                 session_data.set('Username', str(row['ssh_username']))
 
         secret_server_url = row.get('SS URL', None)
-        if secret_server_url:
-            ET.SubElement(session_data, 'SPSLFileName').text = secret_server_url
+        if pd.notna(secret_server_url):
+            ET.SubElement(session_data, 'SPSLFileName').text = str(secret_server_url)
 
     return prettify_xml(root)
 
