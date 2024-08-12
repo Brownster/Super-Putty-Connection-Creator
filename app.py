@@ -142,24 +142,42 @@ def generate_putty_sessions_xml(df, group_name):
         'exporter_gateway': 'Media Gateway',
         'exporter_windows': 'Windows Server',
         'exporter_verint': 'Verint Server',
+        'exporter_vmware': 'VMware Server',  # Separate folder for VMware
+        'exporter_aacc': 'AACC Server',  # Separate folder for AACC
     }
 
+    processed_sessions = set()  # Set to track processed sessions
+
     for _, row in df.iterrows():
-        # Ensure the exporter_type is a string before calling lower()
-        exporter_type = str(row.get('Exporter_name_os', row.get('Exporter_name_app', 'other'))).lower()
+        # Determine the exporter type, preferring OS over application to avoid duplicates
+        exporter_type_os = str(row.get('Exporter_name_os', 'other')).lower()
+        exporter_type_app = str(row.get('Exporter_name_app', 'other')).lower()
+        
+        # Choose the correct exporter type based on precedence and avoid duplicates
+        exporter_type = exporter_type_os if exporter_type_os != 'other' else exporter_type_app
+
+        # Skip if session already processed
+        session_key = (row['Country'], row['Location'], row['Hostnames'], exporter_type)
+        if session_key in processed_sessions:
+            continue
+        
+        # Mark this session as processed
+        processed_sessions.add(session_key)
+
         subfolder = folder_mapping.get(exporter_type, 'Other')
 
         session_data = ET.SubElement(root, 'SessionData')
         session_id = (
             f"{group_name}/{subfolder}/"
-            f"{str(row['Country'])}/{str(row['Location'])}/{str(row['Hostnames'])}"
+            f"{row['Country']}/{row['Location']}/{row['Hostnames']}"
         )
         session_data.set('SessionId', session_id)
-        session_data.set('SessionName', str(row['Hostnames']))
-        session_data.set('Host', str(row['IP Address']))
+        session_data.set('SessionName', str(row['Hostnames']))  # Ensure string conversion
+        session_data.set('Host', str(row['IP Address']))  # Ensure string conversion
 
-        if exporter_type in ['exporter_windows', 'exporter_verint']:
-            session_data.set('ImageKey', exporter_type.split('_')[1])
+        # Handle different types of exporters for connection types
+        if exporter_type in ['exporter_windows', 'exporter_verint', 'exporter_aacc']:
+            session_data.set('ImageKey', exporter_type.split('_')[1] if '_' in exporter_type else exporter_type)
             session_data.set('Port', '3389')
             session_data.set('Proto', 'RDP')
         else:
@@ -171,8 +189,8 @@ def generate_putty_sessions_xml(df, group_name):
                 session_data.set('Username', str(row['ssh_username']))
 
         secret_server_url = row.get('SS URL', None)
-        if pd.notna(secret_server_url):
-            ET.SubElement(session_data, 'SPSLFileName').text = str(secret_server_url)
+        if secret_server_url:
+            ET.SubElement(session_data, 'SPSLFileName').text = str(secret_server_url)  # Ensure string conversion
 
     return prettify_xml(root)
 
