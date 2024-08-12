@@ -82,6 +82,18 @@ def load_excel(filename):
         if len(wb.sheet_names) < 2:
             raise ValueError("The Excel file does not contain a second sheet.")
         df = pd.read_excel(wb, sheet_name=wb.sheet_names[1], header=6)
+        
+        # Define only the columns you actually need for processing
+        required_columns = [
+            'Country', 'Location', 'Hostnames', 'IP Address',
+            'Exporter_name_os', 'Exporter_name_app', 'ssh_username'
+        ]
+
+        # Check for missing columns
+        missing_cols = set(required_columns) - set(df.columns)
+        if missing_cols:
+            raise ValueError(f"Missing columns in Excel: {missing_cols}")
+
         return df
     except Exception as e:
         app.logger.error('Error loading Excel file: %s', e)
@@ -113,30 +125,6 @@ def load_csv(filename):
         app.logger.error('Error loading CSV file: %s', e)
         raise
 
-def load_excel(filename):
-    """Load data from an Excel file starting from sheet 2, row 7."""
-    try:
-        wb = pd.ExcelFile(filename)
-        if len(wb.sheet_names) < 2:
-            raise ValueError("The Excel file does not contain a second sheet.")
-        df = pd.read_excel(wb, sheet_name=wb.sheet_names[1], header=6)
-        
-        # Define only the columns you actually need for processing
-        required_columns = [
-            'Country', 'Location', 'Hostnames', 'IP Address',
-            'Exporter_name_os', 'Exporter_name_app', 'ssh_username'
-        ]
-
-        # Check for missing columns
-        missing_cols = set(required_columns) - set(df.columns)
-        if missing_cols:
-            raise ValueError(f"Missing columns in Excel: {missing_cols}")
-
-        return df
-    except Exception as e:
-        app.logger.error('Error loading Excel file: %s', e)
-        raise
-
 def prettify_xml(element):
     """Return a pretty-printed XML string for the Element."""
     rough_string = ET.tostring(element, 'utf-8')
@@ -157,7 +145,8 @@ def generate_putty_sessions_xml(df, group_name):
     }
 
     for _, row in df.iterrows():
-        exporter_type = row.get('Exporter_name_os', row.get('Exporter_name_app', 'other')).lower()
+        # Ensure the exporter_type is a string before calling lower()
+        exporter_type = str(row.get('Exporter_name_os', row.get('Exporter_name_app', 'other'))).lower()
         subfolder = folder_mapping.get(exporter_type, 'Other')
 
         session_data = ET.SubElement(root, 'SessionData')
