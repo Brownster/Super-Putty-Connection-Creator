@@ -8,17 +8,14 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = '/tmp/'
 app.secret_key = 'your_secret_key'  # Required for flash messages
 
-
 def allowed_file(filename):
     """Check if the uploaded file is an allowed type."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'xlsx', 'csv'}
-
 
 @app.route('/', methods=['GET'])
 def index():
     """Render the HTML page for file upload."""
     return render_template('index.html')
-
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -29,7 +26,7 @@ def upload_file():
         if 'file' not in request.files:
             app.logger.error('No file part in the request.')
             flash('No file part in the request.')
-            return redirect(request.url)
+            return redirect(url_for('index'))
 
         file = request.files['file']
         group_name = request.form.get('group_name', '').strip()
@@ -40,12 +37,12 @@ def upload_file():
         if file.filename == '' or not allowed_file(file.filename):
             app.logger.error('Invalid file type or no file selected.')
             flash('Invalid file type or no file selected. Please upload an Excel or CSV file.')
-            return redirect(request.url)
+            return redirect(url_for('index'))
 
         if not group_name:
             app.logger.error('Group name is required.')
             flash('Group name is required.')
-            return redirect(request.url)
+            return redirect(url_for('index'))
 
         filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
         file.save(filename)
@@ -55,11 +52,11 @@ def upload_file():
         if file_ext == 'xlsx':
             df = load_excel(filename)
         elif file_ext == 'csv':
-            df = pd.read_csv(filename)
+            df = load_csv(filename)
         else:
             app.logger.error('Unsupported file format.')
             flash('Unsupported file format.')
-            return redirect(request.url)
+            return redirect(url_for('index'))
 
         putty_xml_content = generate_putty_sessions_xml(df, group_name)
 
@@ -76,8 +73,7 @@ def upload_file():
     except Exception as e:
         app.logger.error('Error processing file: %s', e)
         flash('An error occurred while processing the file. Please try again.')
-        return redirect(request.url)
-
+        return redirect(url_for('index'))
 
 def load_excel(filename):
     """Load data from an Excel file starting from sheet 2, row 7."""
@@ -91,13 +87,39 @@ def load_excel(filename):
         app.logger.error('Error loading Excel file: %s', e)
         raise
 
+def load_csv(filename):
+    """Load data from a CSV file."""
+    try:
+        df = pd.read_csv(filename, delimiter=',', error_bad_lines=False, warn_bad_lines=True)
+        required_columns = [
+            'Configuration Item Name', 'Location', 'Country', 'Domain', 'Hostnames', 'FQDN',
+            'SS URL', 'IP Address', 'Environment', 'Exporter_name_os', 'OS-Listen-Port',
+            'Exporter_name_app', 'App-Listen-Port', 'Exporter_name_app_1', 'App-Listen-Port-1',
+            'Exporter_name_app_2', 'App-Listen-Port-2', 'Exporter_name_app_3', 'App-Listen-Port-3',
+            'http_2xx', 'icmp', 'ssh-banner', 'tcp-connect', 'SNMP', 'Exporter_SSL', 'Notes',
+            'Description', 'Story #', 'Completed', 'Review comments', 'MaaS alarm', 'Resolution',
+            'comm_string', 'ssh_username', 'ssh_password', 'jmx_ports', 'snmp_version', 'snmp_user',
+            'snmp_password'
+        ]
+
+        missing_cols = set(required_columns) - set(df.columns)
+        if missing_cols:
+            raise ValueError(f"Missing columns in CSV: {missing_cols}")
+
+        return df
+
+    except pd.errors.ParserError as e:
+        app.logger.error('CSV parsing error: %s', e)
+        raise
+    except Exception as e:
+        app.logger.error('Error loading CSV file: %s', e)
+        raise
 
 def prettify_xml(element):
     """Return a pretty-printed XML string for the Element."""
     rough_string = ET.tostring(element, 'utf-8')
     reparsed = minidom.parseString(rough_string)
     return reparsed.toprettyxml(indent="  ")
-
 
 def generate_putty_sessions_xml(df, group_name):
     """Generate the XML content for Putty sessions."""
@@ -137,12 +159,11 @@ def generate_putty_sessions_xml(df, group_name):
             if pd.notna(row.get('ssh_username')) and str(row['ssh_username']).strip():
                 session_data.set('Username', str(row['ssh_username']))
 
-        secret_server_url = row.get('Secret Server', None)
+        secret_server_url = row.get('SS URL', None)
         if secret_server_url:
             ET.SubElement(session_data, 'SPSLFileName').text = secret_server_url
 
     return prettify_xml(root)
-
 
 @app.route('/downloads/<filename>', methods=['GET'])
 def download_file(filename):
@@ -164,7 +185,6 @@ def download_file(filename):
         app.logger.error('Error downloading file: %s', e)
         flash('An error occurred while downloading the file.')
         return redirect(url_for('index'))
-
 
 if __name__ == '__main__':
     app.run(debug=True)
