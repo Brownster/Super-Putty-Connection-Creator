@@ -88,20 +88,18 @@ def load_excel(filename):
         raise
 
 def load_csv(filename):
-    """Load data from a CSV file."""
+    """Load data from a CSV file starting from the header row."""
     try:
-        df = pd.read_csv(filename, delimiter=',', error_bad_lines=False, warn_bad_lines=True)
+        # Read the CSV, starting from the actual header row, usually row 7 (zero-indexed in Pandas)
+        df = pd.read_csv(filename, delimiter=',', skiprows=6, skipinitialspace=True)
+
+        # Define only the columns you actually need for processing
         required_columns = [
-            'Configuration Item Name', 'Location', 'Country', 'Domain', 'Hostnames', 'FQDN',
-            'SS URL', 'IP Address', 'Environment', 'Exporter_name_os', 'OS-Listen-Port',
-            'Exporter_name_app', 'App-Listen-Port', 'Exporter_name_app_1', 'App-Listen-Port-1',
-            'Exporter_name_app_2', 'App-Listen-Port-2', 'Exporter_name_app_3', 'App-Listen-Port-3',
-            'http_2xx', 'icmp', 'ssh-banner', 'tcp-connect', 'SNMP', 'Exporter_SSL', 'Notes',
-            'Description', 'Story #', 'Completed', 'Review comments', 'MaaS alarm', 'Resolution',
-            'comm_string', 'ssh_username', 'ssh_password', 'jmx_ports', 'snmp_version', 'snmp_user',
-            'snmp_password'
+            'Country', 'Location', 'Hostnames', 'IP Address',
+            'Exporter_name_os', 'Exporter_name_app', 'ssh_username'
         ]
 
+        # Check for missing columns
         missing_cols = set(required_columns) - set(df.columns)
         if missing_cols:
             raise ValueError(f"Missing columns in CSV: {missing_cols}")
@@ -113,6 +111,30 @@ def load_csv(filename):
         raise
     except Exception as e:
         app.logger.error('Error loading CSV file: %s', e)
+        raise
+
+def load_excel(filename):
+    """Load data from an Excel file starting from sheet 2, row 7."""
+    try:
+        wb = pd.ExcelFile(filename)
+        if len(wb.sheet_names) < 2:
+            raise ValueError("The Excel file does not contain a second sheet.")
+        df = pd.read_excel(wb, sheet_name=wb.sheet_names[1], header=6)
+        
+        # Define only the columns you actually need for processing
+        required_columns = [
+            'Country', 'Location', 'Hostnames', 'IP Address',
+            'Exporter_name_os', 'Exporter_name_app', 'ssh_username'
+        ]
+
+        # Check for missing columns
+        missing_cols = set(required_columns) - set(df.columns)
+        if missing_cols:
+            raise ValueError(f"Missing columns in Excel: {missing_cols}")
+
+        return df
+    except Exception as e:
+        app.logger.error('Error loading Excel file: %s', e)
         raise
 
 def prettify_xml(element):
