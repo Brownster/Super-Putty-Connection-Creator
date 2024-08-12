@@ -24,18 +24,26 @@ def index():
 def upload_file():
     """Handle file upload and processing."""
     try:
+        app.logger.debug('Received request to upload file.')
+
         if 'file' not in request.files:
+            app.logger.error('No file part in the request.')
             flash('No file part in the request.')
             return redirect(request.url)
 
         file = request.files['file']
         group_name = request.form.get('group_name', '').strip()
 
+        app.logger.debug(f'File received: {file.filename}')
+        app.logger.debug(f'Group name received: {group_name}')
+
         if file.filename == '' or not allowed_file(file.filename):
+            app.logger.error('Invalid file type or no file selected.')
             flash('Invalid file type or no file selected. Please upload an Excel or CSV file.')
             return redirect(request.url)
 
         if not group_name:
+            app.logger.error('Group name is required.')
             flash('Group name is required.')
             return redirect(request.url)
 
@@ -49,6 +57,7 @@ def upload_file():
         elif file_ext == 'csv':
             df = pd.read_csv(filename)
         else:
+            app.logger.error('Unsupported file format.')
             flash('Unsupported file format.')
             return redirect(request.url)
 
@@ -59,6 +68,8 @@ def upload_file():
 
         with open(processed_filepath, 'w', encoding='utf-8') as putty_file:
             putty_file.write(putty_xml_content)
+
+        app.logger.debug(f'File processed and saved as {processed_filename}')
 
         return redirect(url_for('download_file', filename=processed_filename))
 
@@ -141,6 +152,7 @@ def download_file(filename):
         file_path = os.path.join(download_folder, filename)
 
         if not os.path.isfile(file_path):
+            app.logger.error('File not found for download: %s', file_path)
             flash('File not found.')
             return redirect(url_for('index'))
 
